@@ -1,0 +1,738 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { MapPin, AlertTriangle, Cloud, Thermometer, Droplets, Wind, Users, Shield, Bell, Send, Eye, BarChart3, Map, Settings, Home, Phone, Mail, MessageSquare } from 'lucide-react';
+
+// Comprehensive disaster data for Indian states/districts
+const disasterData = {
+  "Uttar Pradesh": {
+    districts: {
+      "Lucknow": { lat: 26.8467, lng: 80.9462, population: 4589838, floods: 7.2, drought: 4.1, cyclone: 1.2, earthquake: 3.8, heatwave: 8.1 },
+      "Kanpur": { lat: 26.4499, lng: 80.3319, population: 2767031, floods: 6.8, drought: 5.2, cyclone: 1.0, earthquake: 4.2, heatwave: 8.7 },
+      "Varanasi": { lat: 25.3176, lng: 82.9739, population: 1201815, floods: 8.1, drought: 3.9, cyclone: 0.8, earthquake: 4.5, heatwave: 8.3 },
+      "Agra": { lat: 27.1767, lng: 78.0081, population: 1574542, floods: 5.9, drought: 6.1, cyclone: 0.9, earthquake: 3.2, heatwave: 9.1 }
+    }
+  },
+  "Maharashtra": {
+    districts: {
+      "Mumbai": { lat: 19.0760, lng: 72.8777, population: 12442373, floods: 8.9, drought: 2.1, cyclone: 7.8, earthquake: 5.2, heatwave: 6.8 },
+      "Pune": { lat: 18.5204, lng: 73.8567, population: 3124458, floods: 6.2, drought: 3.8, cyclone: 4.2, earthquake: 4.9, heatwave: 7.3 },
+      "Nashik": { lat: 19.9975, lng: 73.7898, population: 1486973, floods: 5.4, drought: 4.9, cyclone: 2.8, earthquake: 3.7, heatwave: 8.2 },
+      "Aurangabad": { lat: 19.8762, lng: 75.3433, population: 1175116, floods: 4.8, drought: 6.2, cyclone: 2.1, earthquake: 4.1, heatwave: 8.9 }
+    }
+  },
+  "West Bengal": {
+    districts: {
+      "Kolkata": { lat: 22.5726, lng: 88.3639, population: 4496694, floods: 8.7, drought: 2.3, cyclone: 8.9, earthquake: 6.1, heatwave: 7.2 },
+      "Howrah": { lat: 22.5958, lng: 88.2636, population: 1077075, floods: 8.9, drought: 2.1, cyclone: 8.7, earthquake: 5.8, heatwave: 7.1 },
+      "Darjeeling": { lat: 27.0360, lng: 88.2627, population: 132016, floods: 7.2, drought: 1.8, cyclone: 2.1, earthquake: 7.8, heatwave: 3.2 },
+      "Malda": { lat: 25.0104, lng: 88.1475, population: 396035, floods: 8.1, drought: 3.2, cyclone: 6.8, earthquake: 5.2, heatwave: 7.8 }
+    }
+  },
+  "Tamil Nadu": {
+    districts: {
+      "Chennai": { lat: 13.0827, lng: 80.2707, population: 4681087, floods: 7.8, drought: 4.2, cyclone: 9.1, earthquake: 4.8, heatwave: 8.9 },
+      "Coimbatore": { lat: 11.0168, lng: 76.9558, population: 1061447, floods: 4.2, drought: 5.8, cyclone: 3.1, earthquake: 3.9, heatwave: 8.1 },
+      "Madurai": { lat: 9.9252, lng: 78.1198, population: 1016885, floods: 5.1, drought: 6.2, cyclone: 4.8, earthquake: 3.2, heatwave: 8.7 },
+      "Tiruchirappalli": { lat: 10.7905, lng: 78.7047, population: 847387, floods: 5.8, drought: 5.9, cyclone: 5.2, earthquake: 3.8, heatwave: 8.4 }
+    }
+  },
+  "Rajasthan": {
+    districts: {
+      "Jaipur": { lat: 26.9124, lng: 75.7873, population: 3073350, floods: 3.2, drought: 8.9, cyclone: 0.8, earthquake: 3.1, heatwave: 9.6 },
+      "Udaipur": { lat: 24.5714, lng: 73.6953, population: 451100, floods: 4.1, drought: 8.1, cyclone: 0.9, earthquake: 2.8, heatwave: 9.2 },
+      "Jodhpur": { lat: 26.2389, lng: 73.0243, population: 1137815, floods: 2.8, drought: 9.1, cyclone: 0.7, earthquake: 2.9, heatwave: 9.8 },
+      "Bikaner": { lat: 28.0229, lng: 73.3119, population: 644406, floods: 2.1, drought: 9.4, cyclone: 0.6, earthquake: 2.2, heatwave: 9.9 }
+    }
+  },
+  "Kerala": {
+    districts: {
+      "Thiruvananthapuram": { lat: 8.5241, lng: 76.9366, population: 957730, floods: 8.2, drought: 2.8, cyclone: 6.1, earthquake: 2.9, heatwave: 5.8 },
+      "Kochi": { lat: 9.9312, lng: 76.2673, population: 677381, floods: 7.9, drought: 3.1, cyclone: 5.8, earthquake: 3.2, heatwave: 6.1 },
+      "Kozhikode": { lat: 11.2588, lng: 75.7804, population: 609224, floods: 8.1, drought: 2.9, cyclone: 5.2, earthquake: 3.1, heatwave: 6.4 },
+      "Wayanad": { lat: 11.6854, lng: 76.1320, population: 817420, floods: 7.2, drought: 3.8, cyclone: 2.8, earthquake: 4.1, heatwave: 4.9 }
+    }
+  },
+  "Gujarat": {
+    districts: {
+      "Ahmedabad": { lat: 23.0225, lng: 72.5714, population: 5570585, floods: 4.8, drought: 6.2, cyclone: 7.1, earthquake: 8.9, heatwave: 9.2 },
+      "Surat": { lat: 21.1702, lng: 72.8311, population: 4467797, floods: 5.2, drought: 5.8, cyclone: 6.8, earthquake: 7.2, heatwave: 8.9 },
+      "Vadodara": { lat: 22.3072, lng: 73.1812, population: 1670806, floods: 4.9, drought: 5.9, cyclone: 5.1, earthquake: 6.8, heatwave: 8.7 },
+      "Rajkot": { lat: 22.3039, lng: 70.8022, population: 1390933, floods: 3.8, drought: 6.8, cyclone: 6.2, earthquake: 6.1, heatwave: 9.1 }
+    }
+  },
+  "Karnataka": {
+    districts: {
+      "Bangalore": { lat: 12.9716, lng: 77.5946, population: 8425970, floods: 5.2, drought: 4.8, cyclone: 2.1, earthquake: 3.8, heatwave: 7.9 },
+      "Mysore": { lat: 12.2958, lng: 76.6394, population: 920550, floods: 4.8, drought: 5.2, cyclone: 2.8, earthquake: 3.2, heatwave: 7.2 },
+      "Hubli": { lat: 15.3647, lng: 75.1240, population: 943857, floods: 4.1, drought: 6.1, cyclone: 1.8, earthquake: 3.9, heatwave: 8.1 },
+      "Mangalore": { lat: 12.9141, lng: 74.8560, population: 623841, floods: 7.8, drought: 3.2, cyclone: 5.8, earthquake: 2.9, heatwave: 6.8 }
+    }
+  },
+  "Odisha": {
+    districts: {
+      "Bhubaneswar": { lat: 20.2961, lng: 85.8245, population: 837737, floods: 8.1, drought: 3.8, cyclone: 9.2, earthquake: 4.2, heatwave: 8.9 },
+      "Cuttack": { lat: 20.4625, lng: 85.8828, population: 663849, floods: 8.8, drought: 3.2, cyclone: 9.1, earthquake: 4.1, heatwave: 8.7 },
+      "Puri": { lat: 19.8135, lng: 85.8312, population: 200564, floods: 7.2, drought: 4.1, cyclone: 9.8, earthquake: 3.8, heatwave: 8.2 },
+      "Berhampur": { lat: 19.3149, lng: 84.7941, population: 356598, floods: 6.8, drought: 4.8, cyclone: 9.4, earthquake: 3.2, heatwave: 8.8 }
+    }
+  },
+  "Assam": {
+    districts: {
+      "Guwahati": { lat: 26.1445, lng: 91.7362, population: 957352, floods: 9.2, drought: 2.1, cyclone: 3.2, earthquake: 8.1, heatwave: 6.8 },
+      "Silchar": { lat: 24.8333, lng: 92.7789, population: 228951, floods: 8.9, drought: 2.8, cyclone: 2.8, earthquake: 7.8, heatwave: 6.2 },
+      "Dibrugarh": { lat: 27.4728, lng: 94.9120, population: 154019, floods: 8.2, drought: 3.1, cyclone: 2.1, earthquake: 7.2, heatwave: 5.9 },
+      "Tezpur": { lat: 26.6337, lng: 92.7996, population: 102505, floods: 8.8, drought: 2.9, cyclone: 2.9, earthquake: 7.9, heatwave: 6.1 }
+    }
+  }
+};
+
+// Weather simulation data
+const weatherData = {
+  temperature: Math.round(28 + Math.random() * 15),
+  humidity: Math.round(65 + Math.random() * 25),
+  rainfall: Math.round(Math.random() * 50),
+  windSpeed: Math.round(15 + Math.random() * 20),
+  pressure: Math.round(1010 + Math.random() * 20)
+};
+
+// Alert messages in multiple languages
+const alertMessages = {
+  flood: {
+    en: "FLOOD ALERT: Heavy rainfall expected. Move to higher ground. Keep emergency kit ready. Avoid waterlogged areas.",
+    hi: "बाढ़ चेतावनी: भारी बारिश की संभावना। ऊंची जगह जाएं। आपातकालीन किट तैयार रखें। जलभराव वाले क्षेत्रों से बचें।",
+    bn: "বন্যার সতর্কতা: ভারী বৃষ্টির সম্ভাবনা। উচ্চ স্থানে যান। জরুরি কিট প্রস্তুত রাখুন। জলাবদ্ধ এলাকা এড়িয়ে চলুন।"
+  },
+  cyclone: {
+    en: "CYCLONE ALERT: Strong winds approaching. Stay indoors. Secure loose objects. Stock food and water for 3 days.",
+    hi: "चक्रवात चेतावनी: तेज़ हवाएं आ रही हैं। घर के अंदर रहें। ढीली वस्तुओं को सुरक्षित करें। 3 दिन का भोजन और पानी स्टॉक करें।",
+    bn: "ঘূর্ণিঝড় সতর্কতা: প্রবল বাতাস আসছে। ঘরের ভিতরে থাকুন। আলগা জিনিসপত্র সুরক্ষিত করুন। ৩ দিনের খাবার ও পানি মজুদ করুন।"
+  },
+  heatwave: {
+    en: "HEATWAVE ALERT: Extreme heat expected. Stay hydrated. Avoid outdoor activities 11AM-4PM. Wear light colored clothes.",
+    hi: "लू चेतावनी: अत्यधिक गर्मी की उम्मीद। हाइड्रेटेड रहें। सुबह 11-शाम 4 बजे तक बाहरी गतिविधियों से बचें। हल्के रंग के कपड़े पहनें।",
+    bn: "তাপপ্রবাহ সতর্কতা: প্রচণ্ড গরমের সম্ভাবনা। পানি পান করুন। সকাল ১১টা-বিকাল ৪টা পর্যন্ত বাইরের কাজ এড়িয়ে চলুন। হালকা রঙের পোশাক পরুন।"
+  }
+};
+
+const DisasterPredictionDashboard = () => {
+  const [selectedState, setSelectedState] = useState("Maharashtra");
+  const [selectedDistrict, setSelectedDistrict] = useState("Mumbai");
+  const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [alertsSent, setAlertsSent] = useState(0);
+  const [currentWeather, setCurrentWeather] = useState(weatherData);
+  const [notifications, setNotifications] = useState([]);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+
+  // Simulate real-time data updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentWeather({
+        temperature: Math.round(28 + Math.random() * 15),
+        humidity: Math.round(65 + Math.random() * 25),
+        rainfall: Math.round(Math.random() * 50),
+        windSpeed: Math.round(15 + Math.random() * 20),
+        pressure: Math.round(1010 + Math.random() * 20)
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const currentData = disasterData[selectedState]?.districts[selectedDistrict];
+  
+  const overallRiskScore = useMemo(() => {
+    if (!currentData) return 0;
+    const risks = [currentData.floods, currentData.drought, currentData.cyclone, currentData.earthquake, currentData.heatwave];
+    return Math.round(risks.reduce((sum, risk) => sum + risk, 0) / risks.length);
+  }, [currentData]);
+
+  const getRiskColor = (score) => {
+    if (score >= 8) return "text-red-600 bg-red-100";
+    if (score >= 6) return "text-orange-600 bg-orange-100";
+    if (score >= 4) return "text-yellow-600 bg-yellow-100";
+    return "text-green-600 bg-green-100";
+  };
+
+  const getRiskLevel = (score) => {
+    if (score >= 8) return "Very High";
+    if (score >= 6) return "High";
+    if (score >= 4) return "Moderate";
+    return "Low";
+  };
+
+  const sendAlert = (alertType) => {
+    const message = alertMessages[alertType][selectedLanguage];
+    const newNotification = {
+      id: Date.now(),
+      type: alertType,
+      message: message,
+      location: `${selectedDistrict}, ${selectedState}`,
+      timestamp: new Date().toLocaleString(),
+      population: currentData.population
+    };
+    
+    setNotifications(prev => [newNotification, ...prev.slice(0, 9)]);
+    setAlertsSent(prev => prev + 1);
+    setShowAlertModal(false);
+    
+    // Simulate sending to different channels
+    setTimeout(() => {
+      alert(`Alert sent to ${currentData.population.toLocaleString()} people via SMS, Email, and Mobile Notifications`);
+    }, 1000);
+  };
+
+  const DashboardContent = () => (
+    <div className="space-y-6">
+      {/* Location Selector */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <MapPin className="mr-2 text-blue-600" />
+          Select Location
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">State</label>
+            <select 
+              value={selectedState} 
+              onChange={(e) => {
+                setSelectedState(e.target.value);
+                const firstDistrict = Object.keys(disasterData[e.target.value].districts)[0];
+                setSelectedDistrict(firstDistrict);
+              }}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            >
+              {Object.keys(disasterData).map(state => (
+                <option key={state} value={state}>{state}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">District</label>
+            <select 
+              value={selectedDistrict} 
+              onChange={(e) => setSelectedDistrict(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            >
+              {Object.keys(disasterData[selectedState].districts).map(district => (
+                <option key={district} value={district}>{district}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Risk Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Overall Risk Score</h3>
+              <p className="text-3xl font-bold mt-2 text-blue-600">{overallRiskScore}/10</p>
+              <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-2 ${getRiskColor(overallRiskScore)}`}>
+                {getRiskLevel(overallRiskScore)} Risk
+              </span>
+            </div>
+            <Shield className="h-12 w-12 text-blue-600" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Population</h3>
+              <p className="text-2xl font-bold mt-2 text-green-600">
+                {currentData?.population.toLocaleString()}
+              </p>
+              <span className="text-sm text-gray-600 mt-2 block">People at risk</span>
+            </div>
+            <Users className="h-12 w-12 text-green-600" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Alerts Sent Today</h3>
+              <p className="text-2xl font-bold mt-2 text-orange-600">{alertsSent}</p>
+              <span className="text-sm text-gray-600 mt-2 block">Active warnings</span>
+            </div>
+            <Bell className="h-12 w-12 text-orange-600" />
+          </div>
+        </div>
+      </div>
+
+      {/* Weather Conditions */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-xl font-semibold mb-4 flex items-center">
+          <Cloud className="mr-2 text-blue-600" />
+          Current Weather Conditions
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <Thermometer className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+            <p className="font-semibold">{currentWeather.temperature}°C</p>
+            <p className="text-sm text-gray-600">Temperature</p>
+          </div>
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <Droplets className="h-8 w-8 mx-auto mb-2 text-green-600" />
+            <p className="font-semibold">{currentWeather.humidity}%</p>
+            <p className="text-sm text-gray-600">Humidity</p>
+          </div>
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <Cloud className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+            <p className="font-semibold">{currentWeather.rainfall}mm</p>
+            <p className="text-sm text-gray-600">Rainfall</p>
+          </div>
+          <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <Wind className="h-8 w-8 mx-auto mb-2 text-gray-600" />
+            <p className="font-semibold">{currentWeather.windSpeed} km/h</p>
+            <p className="text-sm text-gray-600">Wind Speed</p>
+          </div>
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <BarChart3 className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+            <p className="font-semibold">{currentWeather.pressure} mb</p>
+            <p className="text-sm text-gray-600">Pressure</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Disaster Risk Breakdown */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-xl font-semibold mb-4">Disaster Risk Analysis</h3>
+        <div className="space-y-4">
+          {[
+            { name: "Floods", risk: currentData?.floods, icon: "💧" },
+            { name: "Drought", risk: currentData?.drought, icon: "🌵" },
+            { name: "Cyclones", risk: currentData?.cyclone, icon: "🌀" },
+            { name: "Earthquakes", risk: currentData?.earthquake, icon: "🏔️" },
+            { name: "Heatwaves", risk: currentData?.heatwave, icon: "🌡️" }
+          ].map((disaster) => (
+            <div key={disaster.name} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">{disaster.icon}</span>
+                <span className="font-medium">{disaster.name}</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-32 bg-gray-200 rounded-full h-2 mr-3">
+                  <div 
+                    className={`h-2 rounded-full ${disaster.risk >= 8 ? 'bg-red-600' : disaster.risk >= 6 ? 'bg-orange-600' : disaster.risk >= 4 ? 'bg-yellow-600' : 'bg-green-600'}`}
+                    style={{width: `${(disaster.risk / 10) * 100}%`}}
+                  ></div>
+                </div>
+                <span className={`px-2 py-1 rounded text-sm font-medium ${getRiskColor(disaster.risk)}`}>
+                  {disaster.risk}/10
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-xl font-semibold mb-4">Emergency Actions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button 
+            onClick={() => setShowAlertModal(true)}
+            className="p-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
+          >
+            <AlertTriangle className="mr-2" />
+            Send Emergency Alert
+          </button>
+          <button className="p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
+            <Eye className="mr-2" />
+            View Satellite Imagery
+          </button>
+          <button className="p-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center">
+            <Shield className="mr-2" />
+            Emergency Resources
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const AlertsContent = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <Bell className="mr-2 text-orange-600" />
+          Alert Management System
+        </h2>
+        
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-2">Select Language</label>
+          <select 
+            value={selectedLanguage}
+            onChange={(e) => setSelectedLanguage(e.target.value)}
+            className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="en">English</option>
+            <option value="hi">हिंदी (Hindi)</option>
+            <option value="bn">বাংলা (Bengali)</option>
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button 
+            onClick={() => sendAlert('flood')}
+            className="p-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Droplets className="mx-auto mb-2" />
+            Send Flood Alert
+          </button>
+          <button 
+            onClick={() => sendAlert('cyclone')}
+            className="p-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <Wind className="mx-auto mb-2" />
+            Send Cyclone Alert
+          </button>
+          <button 
+            onClick={() => sendAlert('heatwave')}
+            className="p-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+          >
+            <Thermometer className="mx-auto mb-2" />
+            Send Heatwave Alert
+          </button>
+        </div>
+      </div>
+
+      {/* Recent Notifications */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-xl font-semibold mb-4">Recent Notifications</h3>
+        {notifications.length === 0 ? (
+          <p className="text-gray-600">No notifications sent yet</p>
+        ) : (
+          <div className="space-y-3">
+            {notifications.map(notification => (
+              <div key={notification.id} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium capitalize">{notification.type} Alert</span>
+                  <span className="text-sm text-gray-600">{notification.timestamp}</span>
+                </div>
+                <p className="text-gray-700 mb-2">{notification.message}</p>
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span>📍 {notification.location}</span>
+                  <span>👥 {notification.population.toLocaleString()} people notified</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const MapContent = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <Map className="mr-2 text-green-600" />
+          Interactive Risk Map
+        </h2>
+        
+        {/* Simulated Map View */}
+        <div className="relative bg-gradient-to-br from-green-100 to-blue-100 rounded-lg p-8 h-96 overflow-hidden">
+          <div className="absolute inset-0 opacity-20">
+            <svg viewBox="0 0 400 300" className="w-full h-full">
+              {/* India outline simulation */}
+              <path d="M50 80 Q100 60 150 80 Q200 100 250 120 Q300 140 320 180 Q300 220 250 240 Q200 250 150 240 Q100 230 80 200 Q60 160 50 120 Z" 
+                    fill="green" opacity="0.3" />
+              
+              {/* Risk markers for different states */}
+              {Object.entries(disasterData).map(([state, data], index) => {
+                const districts = Object.entries(data.districts);
+                return districts.map(([district, districtData], distIndex) => {
+                  const x = 80 + (index * 40) + (distIndex * 15);
+                  const y = 100 + (index * 30) + (distIndex * 10);
+                  const overallRisk = Math.round([districtData.floods, districtData.drought, districtData.cyclone, districtData.earthquake, districtData.heatwave].reduce((sum, risk) => sum + risk, 0) / 5);
+                  
+                  return (
+                    <g key={`${state}-${district}`}>
+                      <circle 
+                        cx={x} 
+                        cy={y} 
+                        r={Math.max(3, overallRisk)} 
+                        fill={overallRisk >= 8 ? '#dc2626' : overallRisk >= 6 ? '#ea580c' : overallRisk >= 4 ? '#ca8a04' : '#16a34a'}
+                        opacity="0.8"
+                        className="cursor-pointer hover:opacity-100"
+                        onClick={() => {
+                          setSelectedState(state);
+                          setSelectedDistrict(district);
+                        }}
+                      />
+                      <text 
+                        x={x} 
+                        y={y - 15} 
+                        fontSize="8" 
+                        textAnchor="middle" 
+                        fill="#374151"
+                        className="pointer-events-none"
+                      >
+                        {district}
+                      </text>
+                    </g>
+                  );
+                });
+              })}
+            </svg>
+          </div>
+          
+          {/* Legend */}
+          <div className="absolute bottom-4 left-4 bg-white bg-opacity-90 p-3 rounded-lg">
+            <h4 className="font-semibold text-sm mb-2">Risk Levels</h4>
+            <div className="space-y-1 text-xs">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-600 rounded-full mr-2"></div>
+                <span>Very High (8-10)</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-orange-600 rounded-full mr-2"></div>
+                <span>High (6-8)</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-yellow-600 rounded-full mr-2"></div>
+                <span>Moderate (4-6)</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-green-600 rounded-full mr-2"></div>
+                <span>Low (0-4)</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Current selection indicator */}
+          <div className="absolute top-4 right-4 bg-white bg-opacity-90 p-3 rounded-lg">
+            <h4 className="font-semibold text-sm">Selected Location</h4>
+            <p className="text-xs text-gray-600">{selectedDistrict}, {selectedState}</p>
+            <p className="text-xs font-medium">Risk Score: {overallRiskScore}/10</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-4">State-wise Risk Summary</h3>
+          <div className="space-y-3">
+            {Object.entries(disasterData).map(([state, data]) => {
+              const districts = Object.values(data.districts);
+              const avgRisk = Math.round(
+                districts.reduce((sum, district) => {
+                  const districtRisk = [district.floods, district.drought, district.cyclone, district.earthquake, district.heatwave].reduce((s, r) => s + r, 0) / 5;
+                  return sum + districtRisk;
+                }, 0) / districts.length
+              );
+              
+              return (
+                <div key={state} className="flex items-center justify-between p-2 border border-gray-200 rounded">
+                  <span className="text-sm font-medium">{state}</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getRiskColor(avgRisk)}`}>
+                    {avgRisk}/10
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-4">Most Vulnerable Districts</h3>
+          <div className="space-y-3">
+            {Object.entries(disasterData).flatMap(([state, data]) => 
+              Object.entries(data.districts).map(([district, districtData]) => {
+                const overallRisk = Math.round([districtData.floods, districtData.drought, districtData.cyclone, districtData.earthquake, districtData.heatwave].reduce((sum, risk) => sum + risk, 0) / 5);
+                return { state, district, risk: overallRisk, population: districtData.population };
+              })
+            ).sort((a, b) => b.risk - a.risk).slice(0, 5).map((item, index) => (
+              <div key={`${item.state}-${item.district}`} className="flex items-center justify-between p-2 border border-gray-200 rounded">
+                <div>
+                  <span className="text-sm font-medium">{item.district}, {item.state}</span>
+                  <p className="text-xs text-gray-600">{item.population.toLocaleString()} people</p>
+                </div>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${getRiskColor(item.risk)}`}>
+                  {item.risk}/10
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Alert Modal
+  const AlertModal = () => (
+    showAlertModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <h3 className="text-lg font-semibold mb-4">Send Emergency Alert</h3>
+          <p className="text-gray-600 mb-4">
+            Select the type of alert to send to {currentData?.population.toLocaleString()} people in {selectedDistrict}, {selectedState}
+          </p>
+          
+          <div className="space-y-3">
+            <button 
+              onClick={() => sendAlert('flood')}
+              className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            >
+              <Droplets className="mr-2" />
+              Flood Warning
+            </button>
+            <button 
+              onClick={() => sendAlert('cyclone')}
+              className="w-full p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
+            >
+              <Wind className="mr-2" />
+              Cyclone Warning
+            </button>
+            <button 
+              onClick={() => sendAlert('heatwave')}
+              className="w-full p-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center"
+            >
+              <Thermometer className="mr-2" />
+              Heatwave Warning
+            </button>
+          </div>
+          
+          <div className="flex justify-end mt-6 space-x-3">
+            <button 
+              onClick={() => setShowAlertModal(false)}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <header className="bg-white shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center">
+              <Shield className="h-10 w-10 text-blue-600 mr-3" />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">AI Disaster Prediction System</h1>
+                <p className="text-sm text-gray-600">Government of India | National Disaster Management Authority</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-full">
+                <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium text-green-800">System Active</span>
+              </div>
+              <div className="text-sm text-gray-600">
+                Last Update: {new Date().toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Navigation */}
+      <nav className="bg-blue-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-8">
+            {[
+              { id: 'dashboard', name: 'Dashboard', icon: Home },
+              { id: 'alerts', name: 'Alert System', icon: Bell },
+              { id: 'map', name: 'Risk Map', icon: Map },
+              { id: 'settings', name: 'Settings', icon: Settings }
+            ].map(({ id, name, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center px-3 py-4 text-sm font-medium ${
+                  activeTab === id 
+                    ? 'text-white border-b-2 border-white' 
+                    : 'text-blue-100 hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4 mr-2" />
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {activeTab === 'dashboard' && <DashboardContent />}
+        {activeTab === 'alerts' && <AlertsContent />}
+        {activeTab === 'map' && <MapContent />}
+        {activeTab === 'settings' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <Settings className="mr-2 text-gray-600" />
+              System Settings
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold mb-3">Alert Channels</h3>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input type="checkbox" defaultChecked className="mr-2" />
+                    <Phone className="h-4 w-4 mr-1" />
+                    SMS Alerts
+                  </label>
+                  <label className="flex items-center">
+                    <input type="checkbox" defaultChecked className="mr-2" />
+                    <Mail className="h-4 w-4 mr-1" />
+                    Email Notifications
+                  </label>
+                  <label className="flex items-center">
+                    <input type="checkbox" defaultChecked className="mr-2" />
+                    <MessageSquare className="h-4 w-4 mr-1" />
+                    Mobile Push Notifications
+                  </label>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-3">Risk Thresholds</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">High Risk Alert Threshold</label>
+                    <input type="range" min="5" max="10" defaultValue="7" className="w-full" />
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>5</span>
+                      <span>10</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Auto-Alert Population Minimum</label>
+                    <input type="number" defaultValue="10000" className="w-full p-2 border border-gray-300 rounded-md" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Alert Modal */}
+      <AlertModal />
+
+      {/* Emergency Contact Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-red-600 text-white p-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center">
+            <AlertTriangle className="h-5 w-5 mr-2" />
+            <span className="font-medium">Emergency Helpline: 108 | NDRF: 011-26701700</span>
+          </div>
+          <button className="bg-red-700 hover:bg-red-800 px-4 py-1 rounded text-sm font-medium">
+            Report Emergency
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DisasterPredictionDashboard;
