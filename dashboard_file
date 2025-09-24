@@ -1,1 +1,632 @@
+# Enhanced streamlit_app/dashboard.py with Icons and Colorful Design
 
+import streamlit as st
+import requests
+import folium
+from streamlit_folium import st_folium
+import pandas as pd
+from datetime import datetime
+import time
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+
+# Configuration
+API_BASE = "http://backend:5000/api"
+
+# Custom CSS for beautiful styling
+st.set_page_config(
+    page_title="🚨 Disaster Alert Dashboard",
+    page_icon="🚨",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS with colors and animations
+st.markdown("""
+<style>
+    /* Main background gradient */
+    .main > div {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 0rem;
+    }
+    
+    /* Header styling */
+    .main-header {
+        background: linear-gradient(90deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4, #FECA57);
+        background-size: 300% 300%;
+        animation: gradientShift 3s ease infinite;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    /* Metric cards */
+    .metric-card {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 1.5rem;
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        text-align: center;
+        transition: transform 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    /* Status indicators */
+    .status-indicator {
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        font-weight: bold;
+        text-align: center;
+        margin: 0.5rem;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.7; }
+        100% { opacity: 1; }
+    }
+    
+    .status-red {
+        background: linear-gradient(45deg, #FF6B6B, #EE5A52);
+        color: white;
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+    }
+    
+    .status-orange {
+        background: linear-gradient(45deg, #FFA726, #FF9800);
+        color: white;
+        box-shadow: 0 4px 15px rgba(255, 167, 38, 0.4);
+    }
+    
+    .status-green {
+        background: linear-gradient(45deg, #66BB6A, #4CAF50);
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 187, 106, 0.4);
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    /* Map container */
+    .map-container {
+        background: rgba(255, 255, 255, 0.9);
+        padding: 1rem;
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    
+    /* Section headers */
+    .section-header {
+        background: linear-gradient(90deg, #4ECDC4, #44A08D);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 2rem;
+        font-weight: bold;
+        text-align: center;
+        margin: 1rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+def fetch_api_data(endpoint):
+    """Fetch data from Flask API"""
+    try:
+        response = requests.get(f"{API_BASE}/{endpoint}", timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"🔌 API returned status {response.status_code}")
+            return {}
+    except Exception as e:
+        st.error(f"🚫 Cannot connect to API: {e}")
+        return {}
+
+def color_for_zone(zone_type):
+    """Get enhanced colors for zone types"""
+    colors = {
+        "red": "#FF4757",      # Bright red
+        "orange": "#FFA726",   # Vibrant orange 
+        "green": "#2ED573"     # Fresh green
+    }
+    return colors.get(zone_type, "green")
+
+def get_zone_icon(zone_type):
+    """Get emoji icons for zone types"""
+    icons = {
+        "red": "🔴",
+        "orange": "🟠", 
+        "green": "🟢"
+    }
+    return icons.get(zone_type, "🟢")
+
+def create_gauge_chart(value, title, color):
+    """Create a beautiful gauge chart"""
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number+delta",
+        value = value,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': title, 'font': {'size': 24, 'color': color}},
+        delta = {'reference': 50},
+        gauge = {
+            'axis': {'range': [None, 100], 'tickcolor': color},
+            'bar': {'color': color},
+            'steps': [
+                {'range': [0, 25], 'color': "#E8F5E8"},
+                {'range': [25, 50], 'color': "#FFF3E0"},
+                {'range': [50, 75], 'color': "#FFEBEE"},
+                {'range': [75, 100], 'color': "#FFCDD2"}
+            ],
+            'threshold': {
+                'line': {'color': "red", 'width': 4},
+                'thickness': 0.75,
+                'value': 90
+            }
+        }
+    ))
+    
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={'color': color},
+        height=300
+    )
+    return fig
+
+def create_trend_chart(df):
+    """Create animated trend chart"""
+    if df.empty:
+        return None
+    
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df_sorted = df.sort_values('timestamp')
+    
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=('💧 Water Level Trend', '🌧️ Rainfall Trend', 
+                       '🌱 Soil Moisture Trend', '📊 Risk Distribution'),
+        specs=[[{"secondary_y": False}, {"secondary_y": False}],
+               [{"secondary_y": False}, {"type": "pie"}]]
+    )
+    
+    # Water level trend
+    fig.add_trace(
+        go.Scatter(x=df_sorted['timestamp'], y=df_sorted['water_level_cm'],
+                  mode='lines+markers', name='Water Level',
+                  line=dict(color='#3498db', width=3),
+                  marker=dict(size=8, color='#2980b9')),
+        row=1, col=1
+    )
+    
+    # Rainfall trend
+    fig.add_trace(
+        go.Scatter(x=df_sorted['timestamp'], y=df_sorted['rain_mm'],
+                  mode='lines+markers', name='Rainfall',
+                  line=dict(color='#9b59b6', width=3),
+                  marker=dict(size=8, color='#8e44ad')),
+        row=1, col=2
+    )
+    
+    # Soil moisture trend
+    fig.add_trace(
+        go.Scatter(x=df_sorted['timestamp'], y=df_sorted['soil_moisture'],
+                  mode='lines+markers', name='Soil Moisture',
+                  line=dict(color='#27ae60', width=3),
+                  marker=dict(size=8, color='#229954')),
+        row=2, col=1
+    )
+    
+    fig.update_layout(
+        height=600,
+        showlegend=False,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,255,255,0.8)",
+        title_font_size=16
+    )
+    
+    return fig
+
+# Main Dashboard Header
+st.markdown("""
+<div class="main-header">
+    <h1>🚨 DISASTER ALERT SYSTEM 🚨</h1>
+    <h3>🌊 Real-time Flood Monitoring & Risk Assessment for Delhi 🏛️</h3>
+    <p>🔄 Powered by AI • 📡 Live Sensors • 🛰️ Satellite Data</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Enhanced Sidebar
+st.sidebar.markdown("""
+<div style="text-align: center; padding: 1rem;">
+    <h2>🎛️ Control Center</h2>
+</div>
+""", unsafe_allow_html=True)
+
+hours_filter = st.sidebar.slider("⏰ Hours of Data", 1, 72, 24, help="Select time range for data display")
+
+col1, col2 = st.sidebar.columns(2)
+with col1:
+    if st.button("🔄 Refresh", help="Refresh all data"):
+        st.rerun()
+
+with col2:
+    auto_refresh = st.checkbox("⚡ Auto-refresh", help="Auto refresh every 30 seconds")
+
+if auto_refresh:
+    time.sleep(30)
+    st.rerun()
+
+# System Status Check
+st.sidebar.markdown("### 🔧 System Status")
+health_data = fetch_api_data("health")
+
+if health_data and health_data.get("status") == "healthy":
+    st.sidebar.success("✅ System Online")
+    st.sidebar.markdown(f"🕒 Last check: `{datetime.now().strftime('%H:%M:%S')}`")
+else:
+    st.sidebar.error("❌ System Offline")
+    st.error("🚫 Cannot connect to the backend system. Make sure all services are running.")
+    st.stop()
+
+# Fetch Data with Loading Animation
+with st.spinner("🔄 Loading real-time data..."):
+    zones_data = fetch_api_data(f"risk-zones?hours={hours_filter}")
+    forecast_data = fetch_api_data("forecast")
+    sensor_data = fetch_api_data(f"sensor-data?hours={hours_filter}")
+
+# Enhanced Summary Metrics
+st.markdown('<div class="section-header">📊 CURRENT STATUS OVERVIEW</div>', unsafe_allow_html=True)
+
+if zones_data and 'summary' in zones_data:
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown("""
+        <div class="metric-card">
+            <h2>🗺️</h2>
+            <h3 style="color: #2c3e50;">Total Zones</h3>
+            <h1 style="color: #3498db; font-size: 3em;">{}</h1>
+        </div>
+        """.format(zones_data['summary']['total']), unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="metric-card">
+            <h2>🚨</h2>
+            <h3 style="color: #e74c3c;">High Risk</h3>
+            <h1 style="color: #e74c3c; font-size: 3em;">{}</h1>
+        </div>
+        """.format(zones_data['summary']['red']), unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div class="metric-card">
+            <h2>⚠️</h2>
+            <h3 style="color: #f39c12;">Medium Risk</h3>
+            <h1 style="color: #f39c12; font-size: 3em;">{}</h1>
+        </div>
+        """.format(zones_data['summary']['orange']), unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown("""
+        <div class="metric-card">
+            <h2>✅</h2>
+            <h3 style="color: #27ae60;">Low Risk</h3>
+            <h1 style="color: #27ae60; font-size: 3em;">{}</h1>
+        </div>
+        """.format(zones_data['summary']['green']), unsafe_allow_html=True)
+else:
+    st.warning("⚠️ No zone data available")
+
+# Enhanced Map Section
+st.markdown('<div class="section-header">🗺️ INTERACTIVE RISK ZONE MAP</div>', unsafe_allow_html=True)
+
+if zones_data and zones_data.get('zones'):
+    zones = zones_data['zones']
+    
+    # Calculate map center
+    lats = [z['center_lat'] for z in zones]
+    lons = [z['center_lon'] for z in zones]
+    
+    if lats and lons:
+        center = [sum(lats)/len(lats), sum(lons)/len(lons)]
+        
+        # Create enhanced map
+        m = folium.Map(
+            location=center, 
+            zoom_start=13,
+            tiles='CartoDB positron'  # Clean, light background
+        )
+        
+        # Add zones to map with enhanced styling
+        for zone in zones:
+            locations = [(lat, lon) for lon, lat in zone['geometry']]
+            
+            # Enhanced popup with styling
+            popup_html = f"""
+            <div style="font-family: Arial; min-width: 200px;">
+                <h3 style="color: {color_for_zone(zone['zone_type'])}; margin-bottom: 10px;">
+                    {get_zone_icon(zone['zone_type'])} {zone['zone_type'].upper()} RISK ZONE
+                </h3>
+                <hr style="margin: 10px 0;">
+                <p><b>🎯 Risk Score:</b> {zone['risk_score']}</p>
+                <p><b>💧 Water Level:</b> {zone['mean_water']} cm</p>
+                <p><b>🌧️ Rainfall:</b> {zone['mean_rain']} mm</p>
+                <p><b>🌱 Soil Moisture:</b> {zone['mean_soil']}%</p>
+                <p><b>📡 Active Sensors:</b> {zone['sensor_count']}</p>
+                <hr style="margin: 10px 0;">
+                <p><small>📍 Location: ({zone['center_lat']:.4f}, {zone['center_lon']:.4f})</small></p>
+            </div>
+            """
+            
+            folium.Polygon(
+                locations=locations,
+                color=color_for_zone(zone['zone_type']),
+                weight=3,
+                fill=True,
+                fillColor=color_for_zone(zone['zone_type']),
+                fillOpacity=0.7,
+                popup=folium.Popup(popup_html, max_width=300)
+            ).add_to(m)
+            
+            # Add markers for high-risk zones
+            if zone['zone_type'] == 'red':
+                folium.Marker(
+                    location=[zone['center_lat'], zone['center_lon']],
+                    icon=folium.Icon(color='red', icon='exclamation-sign', prefix='fa'),
+                    popup=f"🚨 HIGH RISK ALERT!\nScore: {zone['risk_score']}"
+                ).add_to(m)
+        
+        # Add a legend
+        legend_html = """
+        <div style="position: fixed; 
+                    bottom: 50px; left: 50px; width: 150px; height: 90px; 
+                    background-color: white; border:2px solid grey; z-index:9999; 
+                    font-size:14px; padding: 10px">
+        <p><span style="color:red;">🔴</span> High Risk</p>
+        <p><span style="color:orange;">🟠</span> Medium Risk</p>
+        <p><span style="color:green;">🟢</span> Low Risk</p>
+        </div>
+        """
+        m.get_root().html.add_child(folium.Element(legend_html))
+        
+        # Display map
+        with st.container():
+            st.markdown('<div class="map-container">', unsafe_allow_html=True)
+            map_data = st_folium(m, width=1200, height=600, returned_objects=["last_object_clicked"])
+            st.markdown('</div>', unsafe_allow_html=True)
+
+# Enhanced Zone Details with Colorful Table
+st.markdown('<div class="section-header">📋 DETAILED ZONE ANALYSIS</div>', unsafe_allow_html=True)
+
+if zones_data and zones_data.get('zones'):
+    df_zones = pd.DataFrame(zones)
+    
+    # Create enhanced dataframe
+    display_df = df_zones[['zone_type', 'risk_score', 'mean_water', 'mean_rain', 'mean_soil', 'sensor_count']].copy()
+    display_df.columns = ['🎯 Risk Level', '📊 Score', '💧 Water (cm)', '🌧️ Rain (mm)', '🌱 Soil (%)', '📡 Sensors']
+    
+    # Add emoji indicators
+    display_df['🎯 Risk Level'] = display_df['🎯 Risk Level'].map({
+        'red': '🔴 HIGH',
+        'orange': '🟠 MEDIUM', 
+        'green': '🟢 LOW'
+    })
+    
+    def highlight_rows(row):
+        if '🔴' in str(row['🎯 Risk Level']):
+            return ['background-color: #ffebee; font-weight: bold'] * len(row)
+        elif '🟠' in str(row['🎯 Risk Level']):
+            return ['background-color: #fff3e0; font-weight: bold'] * len(row)
+        else:
+            return ['background-color: #e8f5e8'] * len(row)
+    
+    styled_df = display_df.style.apply(highlight_rows, axis=1)
+    st.dataframe(styled_df, use_container_width=True, height=400)
+
+# Enhanced Forecast Section
+st.markdown('<div class="section-header">🔮 72-HOUR PREDICTIVE FORECAST</div>', unsafe_allow_html=True)
+
+if forecast_data and forecast_data.get('current_level'):
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        current_level = forecast_data.get('current_level', 0)
+        gauge_fig = create_gauge_chart(min(current_level, 100), "💧 Current Level", "#3498db")
+        st.plotly_chart(gauge_fig, use_container_width=True)
+    
+    with col2:
+        predicted = forecast_data.get('predicted_72h', 0)
+        current = forecast_data.get('current_level', 0)
+        delta = predicted - current
+        
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>🔮 Predicted (72h)</h3>
+            <h2 style="color: {'#e74c3c' if delta > 0 else '#27ae60'};">{predicted} cm</h2>
+            <p style="color: {'#e74c3c' if delta > 0 else '#27ae60'};">
+                {'📈' if delta > 0 else '📉'} {delta:+.1f} cm change
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        trend = forecast_data.get('trend_per_hour', 0)
+        trend_direction = "📈 Rising" if trend > 0 else "📉 Falling" if trend < 0 else "➡️ Stable"
+        trend_color = "#e74c3c" if trend > 0 else "#27ae60" if trend < 0 else "#95a5a6"
+        
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>📊 Trend Analysis</h3>
+            <h2 style="color: {trend_color};">{trend_direction}</h2>
+            <p>{trend:.3f} cm/hour</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        # Risk assessment
+        risk_level = "🚨 CRITICAL" if predicted > 200 else "⚠️ WARNING" if predicted > 150 else "✅ NORMAL"
+        risk_color = "#e74c3c" if predicted > 200 else "#f39c12" if predicted > 150 else "#27ae60"
+        
+        st.markdown(f"""
+        <div class="metric-card">
+            <h3>⚡ Alert Level</h3>
+            <h2 style="color: {risk_color};">{risk_level}</h2>
+            <p>Based on forecast</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+# Enhanced Sensor Data Visualization
+if sensor_data and sensor_data.get('data'):
+    st.markdown('<div class="section-header">📊 REAL-TIME SENSOR ANALYTICS</div>', unsafe_allow_html=True)
+    
+    df_sensors = pd.DataFrame(sensor_data['data'])
+    
+    if not df_sensors.empty:
+        # Create trend chart
+        trend_fig = create_trend_chart(df_sensors)
+        if trend_fig:
+            st.plotly_chart(trend_fig, use_container_width=True)
+        
+        # Sensor statistics
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 📡 Latest Sensor Readings")
+            latest = df_sensors.iloc[0] if len(df_sensors) > 0 else None
+            if latest is not None:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h4>🆔 Device: {latest['device_id']}</h4>
+                    <p>💧 Water Level: <b>{latest['water_level_cm']} cm</b></p>
+                    <p>🌧️ Rainfall: <b>{latest['rain_mm']} mm</b></p>
+                    <p>🌱 Soil Moisture: <b>{latest['soil_moisture']}%</b></p>
+                    <p>📍 Location: <b>({latest['latitude']:.4f}, {latest['longitude']:.4f})</b></p>
+                    <p>🕒 Time: <b>{latest['timestamp']}</b></p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("### 📈 Statistical Summary")
+            if 'water_level_cm' in df_sensors.columns:
+                avg_water = df_sensors['water_level_cm'].mean()
+                max_water = df_sensors['water_level_cm'].max()
+                min_water = df_sensors['water_level_cm'].min()
+                
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h4>📊 Water Level Statistics</h4>
+                    <p>📊 Average: <b>{avg_water:.1f} cm</b></p>
+                    <p>📈 Maximum: <b>{max_water:.1f} cm</b></p>
+                    <p>📉 Minimum: <b>{min_water:.1f} cm</b></p>
+                    <p>📡 Active Sensors: <b>{df_sensors['device_id'].nunique()}</b></p>
+                    <p>🔢 Total Readings: <b>{len(df_sensors)}</b></p>
+                </div>
+                """, unsafe_allow_html=True)
+
+# Enhanced Chatbot
+st.sidebar.markdown("### 🤖 AI Assistant")
+st.sidebar.markdown("*Ask me anything about the system!*")
+
+user_question = st.sidebar.text_input("💬 Your question:", placeholder="e.g., How many red zones?")
+
+if user_question:
+    question_lower = user_question.lower()
+    
+    with st.sidebar:
+        if "red" in question_lower and "zone" in question_lower:
+            if zones_data and 'summary' in zones_data:
+                red_count = zones_data['summary'].get('red', 0)
+                st.success(f"🔴 Currently **{red_count}** high-risk zones detected!")
+            else:
+                st.info("❓ No zone data available.")
+                
+        elif "alert" in question_lower:
+            st.success("🚨 Alert system is **operational**! High-risk zones are automatically identified.")
+            
+        elif "forecast" in question_lower or "prediction" in question_lower:
+            if forecast_data:
+                trend = forecast_data.get('trend_per_hour', 0)
+                direction = "📈 rising" if trend > 0 else "📉 falling" if trend < 0 else "➡️ stable"
+                st.success(f"🔮 Water levels are **{direction}** (trend: {trend:.3f} cm/hour)")
+            else:
+                st.info("❓ Forecast data not available.")
+                
+        elif "sensor" in question_lower:
+            if sensor_data and sensor_data.get('data'):
+                count = len(sensor_data['data'])
+                active = len(set(s['device_id'] for s in sensor_data['data']))
+                st.success(f"📡 **{active}** active sensors with **{count}** recent readings!")
+            else:
+                st.info("❓ No sensor data available.")
+                
+        elif "help" in question_lower:
+            st.info("""
+            🤖 **AI Assistant Help**
+            
+            You can ask about:
+            • 🔴 'red zones' - High risk areas
+            • 🚨 'alerts' - Alert system status  
+            • 🔮 'forecast' - Predictions
+            • 📡 'sensors' - Sensor status
+            • ❓ 'help' - Show this help
+            """)
+        else:
+            st.warning("🤔 Try asking about: **red zones**, **alerts**, **forecast**, **sensors**, or type **help**")
+
+# Enhanced Footer
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center; padding: 2rem; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 15px; margin-top: 2rem;">
+    <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+        <div style="color: white; margin: 1rem;">
+            <h3>🚨 Disaster Alert System</h3>
+            <p>Real-time monitoring & alerting</p>
+        </div>
+        <div style="color: white; margin: 1rem;">
+            <h3>🏢 Coverage Area</h3>
+            <p>Delhi NCR Region</p>
+        </div>
+        <div style="color: white; margin: 1rem;">
+            <h3>🔄 Status</h3>
+            <p>Last Updated: {}</p>
+        </div>
+    </div>
+</div>
+""".format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')), unsafe_allow_html=True)
+
+# Dynamic Alert Banner
+if zones_data and zones_data.get('summary', {}).get('red', 0) > 0:
+    st.markdown(f"""
+    <div class="status-indicator status-red" style="position: fixed; top: 100px; right: 20px; z-index: 1000;">
+        🚨 CRITICAL ALERT: {zones_data['summary']['red']} HIGH-RISK ZONES!
+    </div>
+    """, unsafe_allow_html=True)
+elif zones_data and zones_data.get('summary', {}).get('orange', 0) > 0:
+    st.markdown(f"""
+    <div class="status-indicator status-orange" style="position: fixed; top: 100px; right: 20px; z-index: 1000;">
+        ⚠️ WARNING: {zones_data['summary']['orange']} MEDIUM-RISK ZONES
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <div class="status-indicator status-green" style="position: fixed; top: 100px; right: 20px; z-index: 1000;">
+        ✅ ALL SYSTEMS NORMAL
+    </div>
+    """, unsafe_allow_html=True)
